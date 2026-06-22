@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Mic, Send, MapPin, CloudRain, Sun, Wind, Cloud, Menu, X, Settings, User, Search } from "lucide-react";
+import { Mic, Send, MapPin, CloudRain, Sun, Wind, Cloud, Menu, X, Settings, User, Search, Activity, Paperclip, FileText } from "lucide-react";
 import { cn } from "./lib/utils";
 import ReactMarkdown from "react-markdown";
 import { Message, LocationData } from "./types";
 import { auth, db } from "./lib/firebase";
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User as FirebaseUser, signOut } from "firebase/auth";
 import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, limit } from "firebase/firestore";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -14,6 +15,9 @@ export default function App() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [weatherDescription, setWeatherDescription] = useState<string>("Loading...");
   const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
+  const [forecast, setForecast] = useState<any[]>([]);
+  const [rawForecastJson, setRawForecastJson] = useState<string>("");
+  const [attachedData, setAttachedData] = useState<string | null>(null);
   
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -37,6 +41,8 @@ export default function App() {
         
         if (data.temp !== undefined) setWeatherTemp(data.temp);
         if (data.description) setWeatherDescription(data.description);
+        if (data.forecast) setForecast(data.forecast);
+        if (data.rawForecastJson) setRawForecastJson(data.rawForecastJson);
         if (data.lat && data.lon) {
            setLocation({ lat: data.lat, lon: data.lon, name: data.name });
         }
@@ -64,11 +70,11 @@ export default function App() {
             fetchWeatherData({ lat: pos.coords.latitude, lon: pos.coords.longitude });
          },
          (err) => {
-            fetchWeatherData({ lat: 23.8103, lon: 90.4125 }); // Default to Dhaka
+            fetchWeatherData({ lat: 24.88208, lon: 90.72308 }); // Default to Netrokona Sadar
          }
        );
     } else {
-       fetchWeatherData({ lat: 23.8103, lon: 90.4125 });
+       fetchWeatherData({ lat: 24.88208, lon: 90.72308 }); // Default to Netrokona Sadar
     }
 
     return () => unsubscribe();
@@ -138,7 +144,7 @@ export default function App() {
         body: JSON.stringify({ 
            message: text, 
            history: messages,
-           context: location
+           context: { ...location, rawForecastJson, attachedData }
         }),
       });
 
@@ -210,29 +216,37 @@ export default function App() {
       </div>
       
       <div className="p-6 flex-1 space-y-4 overflow-y-auto">
-         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">কুইক অ্যাকশন (Quick Actions)</h3>
-         <button onClick={() => { handleSendMessage("পরবর্তী ৩ ঘণ্টার অবস্থা কী?"); setMobileMenuOpen(false); }} className="w-full flex items-center p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors border border-slate-100 group">
+         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">হাওর এবং কৃষি সতর্কতা (Agro Alerts)</h3>
+         <button onClick={() => { handleSendMessage("হাওরের ঢল ও শিলাবৃষ্টির পূর্বাভাস দিন"); setMobileMenuOpen(false); }} className="w-full flex items-center p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors border border-slate-100 group">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-4 group-hover:scale-110 transition-transform shrink-0">
                <Wind size={20} />
             </div>
-            <span className="font-medium text-slate-700 text-left">পরবর্তী ৩ ঘণ্টার অবস্থা</span>
+            <span className="font-medium text-slate-700 text-left">হাওরের ঢল ও শিলাবৃষ্টির পূর্বাভাস</span>
          </button>
-         <button onClick={() => { handleSendMessage("আজকের সম্পূর্ণ পূর্বাভাস দিন"); setMobileMenuOpen(false); }} className="w-full flex items-center p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors border border-slate-100 group">
+         <button onClick={() => { handleSendMessage("বোরো ধান কাটার জন্য আগামী ৩ দিনের আবহাওয়া কেমন?"); setMobileMenuOpen(false); }} className="w-full flex items-center p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors border border-slate-100 group">
             <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 mr-4 group-hover:scale-110 transition-transform shrink-0">
                <Sun size={20} />
             </div>
-            <span className="font-medium text-slate-700 text-left">আজকের সম্পূর্ণ পূর্বাভাস</span>
+            <span className="font-medium text-slate-700 text-left">বোরো ধানের জন্য আবহাওয়া</span>
          </button>
          
          <div className="mt-8">
              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">রাডার ম্যাপ (Radar)</h3>
-             <div className="aspect-[4/3] w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-100 relative group cursor-pointer" onClick={() => { handleSendMessage("রাডার ম্যাপের তথ্য দিন"); setMobileMenuOpen(false); }}>
-                 {/* Fallback map if needed - simulated for now */}
-                 <div className="absolute inset-0 opacity-20 bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] bg-cover bg-center"></div>
-                 <div className="absolute inset-0 flex items-center justify-center flex-col text-slate-500 bg-white/40 backdrop-blur-[2px]">
-                    <MapPin size={32} className="mb-2 text-blue-500 group-hover:scale-110 transition-transform" />
-                    <span className="font-medium text-sm">Open Interactive Radar</span>
-                 </div>
+             <div className="aspect-[4/3] w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-100 relative group">
+                 {location?.lat && location?.lon ? (
+                     <iframe 
+                       width="100%" 
+                       height="100%" 
+                       src={`https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=%C2%B0C&metricWind=km%2Fh&zoom=5&overlay=radar&product=radar&level=surface&lat=${location.lat}&lon=${location.lon}`} 
+                       frameBorder="0"
+                       title="Windy Radar Map"
+                     ></iframe>
+                 ) : (
+                     <div className="absolute inset-0 flex items-center justify-center flex-col text-slate-500 bg-white/40 backdrop-blur-[2px]">
+                        <MapPin size={32} className="mb-2 text-blue-500 group-hover:scale-110 transition-transform" />
+                        <span className="font-medium text-sm">লোকেশন সেট করুন</span>
+                     </div>
+                 )}
              </div>
          </div>
       </div>
@@ -342,10 +356,29 @@ export default function App() {
         </div>
 
         <div className="p-4 sm:p-6 bg-white border-t border-slate-200">
+           {attachedData && (
+                <div className="mb-3 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between text-sm text-blue-700 max-w-4xl mx-auto">
+                   <div className="flex items-center gap-2">
+                      <FileText size={16} /> 
+                      <span>Data attached (Locally uploaded)</span>
+                   </div>
+                   <button type="button" onClick={() => setAttachedData(null)} className="text-blue-400 hover:text-blue-800">
+                      <X size={16} />
+                   </button>
+                </div>
+           )}
            <form 
               onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputText); }}
               className="max-w-4xl mx-auto relative flex items-end gap-3"
            >
+              <button 
+                 type="button"
+                 title="Upload Attachment"
+                 onClick={() => setAttachedData("MOCK_LOCAL_WEATHER_DIAGNOSTICS_DATA_LOG_FILE")}
+                 className="p-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl transition-colors shadow-sm shrink-0"
+              >
+                 <Paperclip size={22} />
+              </button>
               <button 
                  type="button"
                  title="Voice Input (Coming Soon)"

@@ -16,4 +16,7 @@ export interface WeatherData {
   temp?: number;
   description?: string;
   icon?: string;
+  forecast?: { time: string, temp: number, precip: number }[];
+  rawForecastJson?: string;
+  attachedData?: string;
 }

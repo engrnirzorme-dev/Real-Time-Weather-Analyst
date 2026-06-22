@@ -1,0 +1,11 @@
+{
+  "name": "আবহাওয়া ও এআই চ্যাট",
+  "description": "একটি আধুনিক আবহাওয়া অ্যাপ যা রিয়েল-টাইম তথ্য ও এআই চ্যাটবট সুবিধা প্রদান করে।",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

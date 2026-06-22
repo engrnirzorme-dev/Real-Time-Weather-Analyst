@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if the user is authenticated and accessing their own data
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      // Users can only read and write their own documents
+      allow read, write: if isOwner(userId);
+      
+      match /chats/{chatId} {
+        // Users can only read and write their own chat documents
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+// Firestore Blueprint
+{
+  "$schema": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firestore.blueprint.schema.json",
+  "collections": {
+    "users": {
+      "path": "users/{userId}",
+      "description": "Store user profiles and settings",
+      "rules": ["read", "write"],
+      "collections": {
+        "chats": {
+          "path": "chats/{chatId}",
+          "description": "Store chat history for a user",
+          "rules": ["read", "write"]
+        }
+      }
+    }
+  }
+}
